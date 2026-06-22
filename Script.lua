@@ -8,6 +8,7 @@ local Camera = workspace.CurrentCamera
 -- Настройки
 local ESP_Enabled = false
 local Aimbot_Enabled = false
+local Fly_Enabled = false
 local Aimbot_FOV = 150 
 
 -- Хранилище для графики ESP
@@ -76,6 +77,13 @@ local function GetClosestPlayerToCenter()
     return closestPlayer
 end
 
+-- Бесконечный прыжок (Fly)
+UserInputService.JumpRequest:Connect(function()
+    if Fly_Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
+
 -- Высокопроизводительный цикл обновлений
 RunService.Heartbeat:Connect(function()
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -128,10 +136,8 @@ RunService.Heartbeat:Connect(function()
             local isMovingCamera = UserInputService:GetMouseDelta().Magnitude > 2
             
             if isMovingCamera then
-                -- Если ты резко ведешь пальцем, аим дает тебе довернуть прицел (смуч-доводка)
                 Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, targetHead.Position), 0.4)
             else
-                -- Если ты не дергаешь экран, аим лочит башку намертво
                 Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetHead.Position)
             end
         end
@@ -153,8 +159,8 @@ ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 260)
-MainFrame.Position = UDim2.new(0.5, -110, 0.4, -130)
+MainFrame.Size = UDim2.new(0, 220, 0, 240) -- Оптимальная высота под новый лейаут
+MainFrame.Position = UDim2.new(0.5, -110, 0.4, -120)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -178,15 +184,15 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 10)
 TitleCorner.Parent = Title
 
--- Кнопка ESP
+-- Кнопка ESP (Слева в верхнем ряду)
 local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0, 180, 0, 40)
-ToggleButton.Position = UDim2.new(0.5, -90, 0, 50)
+ToggleButton.Size = UDim2.new(0, 85, 0, 40)
+ToggleButton.Position = UDim2.new(0, 20, 0, 50)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 ToggleButton.Text = "ESP: OFF"
 ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.TextSize = 16
+ToggleButton.TextSize = 14
 ToggleButton.Parent = MainFrame
 
 local ButtonCorner = Instance.new("UICorner")
@@ -204,7 +210,33 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Кнопка AIMBOT
+-- Кнопка FLY (Справа в верхнем ряду, рядом с ESP)
+local FlyButton = Instance.new("TextButton")
+FlyButton.Size = UDim2.new(0, 85, 0, 40)
+FlyButton.Position = UDim2.new(0, 115, 0, 50)
+FlyButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+FlyButton.Text = "FLY: OFF"
+FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlyButton.Font = Enum.Font.GothamBold
+FlyButton.TextSize = 14
+FlyButton.Parent = MainFrame
+
+local FlyCorner = Instance.new("UICorner")
+FlyCorner.CornerRadius = UDim.new(0, 8)
+FlyCorner.Parent = FlyButton
+
+FlyButton.MouseButton1Click:Connect(function()
+    Fly_Enabled = not Fly_Enabled
+    if Fly_Enabled then
+        FlyButton.Text = "FLY: ON"
+        FlyButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        FlyButton.Text = "FLY: OFF"
+        FlyButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
+
+-- Кнопка AIMBOT (Ниже под ESP и FLY)
 local AimButton = Instance.new("TextButton")
 AimButton.Size = UDim2.new(0, 180, 0, 40)
 AimButton.Position = UDim2.new(0.5, -90, 0, 105)
@@ -230,7 +262,7 @@ AimButton.MouseButton1Click:Connect(function()
     end
 end)
 
---- ПОЛЗУНОК FOV ---
+--- ПОЛЗУНОК FOV (В самом низу) ---
 local SliderLabel = Instance.new("TextLabel")
 SliderLabel.Size = UDim2.new(0, 180, 0, 20)
 SliderLabel.Position = UDim2.new(0.5, -90, 0, 160)
@@ -341,7 +373,27 @@ CloseButton.MouseButton1Click:Connect(function()
     OpenButton.Visible = true
 end)
 
-OpenButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = true
-    OpenButton.Visible = false
+-- Умная кнопка открытия (защита от ложного клика при движении)
+local dragStartPos = nil
+OpenButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragStartPos = OpenButton.Position
+    end
+end)
+
+OpenButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if dragStartPos then
+            local startX = dragStartPos.X.Offset
+            local startY = dragStartPos.Y.Offset
+            local currentX = OpenButton.Position.X.Offset
+            local currentY = OpenButton.Position.Y.Offset
+            local distanceMoved = math.sqrt((currentX - startX)^2 + (currentY - startY)^2)
+            
+            if distanceMoved < 5 then
+                MainFrame.Visible = true
+                OpenButton.Visible = false
+            end
+        end
+    end
 end)
