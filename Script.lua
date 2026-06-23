@@ -9,7 +9,9 @@ local Camera = workspace.CurrentCamera
 local ESP_Enabled = false
 local Aimbot_Enabled = false
 local Fly_Enabled = false
+local Crosshair_Enabled = false
 local Aimbot_FOV = 150 
+local Crosshair_Size = 10 -- Новая настройка размера прицела
 
 -- Хранилище для графики ESP
 local ESP_Cache = {}
@@ -22,6 +24,17 @@ FOVCircle.NumSides = 60
 FOVCircle.Radius = Aimbot_FOV
 FOVCircle.Filled = false
 FOVCircle.Visible = false
+
+-- Кроссхеир (Перекрестие)
+local Crosshair_Horizontal = Drawing.new("Line")
+Crosshair_Horizontal.Color = Color3.fromRGB(255, 0, 0)
+Crosshair_Horizontal.Thickness = 2
+Crosshair_Horizontal.Visible = false
+
+local Crosshair_Vertical = Drawing.new("Line")
+Crosshair_Vertical.Color = Color3.fromRGB(255, 0, 0)
+Crosshair_Vertical.Thickness = 2
+Crosshair_Vertical.Visible = false
 
 -- Оптимизированный ESP
 local function CreateESP(player)
@@ -77,7 +90,7 @@ local function GetClosestPlayerToCenter()
     return closestPlayer
 end
 
--- Бесконечный прыжок (Fly)
+-- Бесконечный прыжок (Infinite Jump)
 UserInputService.JumpRequest:Connect(function()
     if Fly_Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
@@ -95,6 +108,24 @@ RunService.Heartbeat:Connect(function()
         FOVCircle.Visible = true
     else
         FOVCircle.Visible = false
+    end
+
+    -- Визуализация Кроссхеира (Размер теперь зависит от Crosshair_Size)
+    if Crosshair_Enabled then
+        local lSize = Crosshair_Size -- Длина линий динамически меняется ползунком
+        local gap = 3                -- Зазор в центре
+        
+        Crosshair_Horizontal.From = Vector2.new(screenCenter.X - lSize - gap, screenCenter.Y)
+        Crosshair_Horizontal.To = Vector2.new(screenCenter.X + lSize + gap, screenCenter.Y)
+        
+        Crosshair_Vertical.From = Vector2.new(screenCenter.X, screenCenter.Y - lSize - gap)
+        Crosshair_Vertical.To = Vector2.new(screenCenter.X, screenCenter.Y + lSize + gap)
+        
+        Crosshair_Horizontal.Visible = true
+        Crosshair_Vertical.Visible = true
+    else
+        Crosshair_Horizontal.Visible = false
+        Crosshair_Vertical.Visible = false
     end
 
     -- Плавный и быстрый ESP без задержек
@@ -159,8 +190,8 @@ ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 240) -- Оптимальная высота под новый лейаут
-MainFrame.Position = UDim2.new(0.5, -110, 0.4, -120)
+MainFrame.Size = UDim2.new(0, 220, 0, 310) -- Высота скорректирована для экономии места
+MainFrame.Position = UDim2.new(0.5, -110, 0.4, -155)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -184,7 +215,8 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 10)
 TitleCorner.Parent = Title
 
--- Кнопка ESP (Слева в верхнем ряду)
+--- --- РЯД 1: ESP И INF JUMP --- ---
+
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Size = UDim2.new(0, 85, 0, 40)
 ToggleButton.Position = UDim2.new(0, 20, 0, 50)
@@ -192,7 +224,7 @@ ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 ToggleButton.Text = "ESP: OFF"
 ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.TextSize = 14
+ToggleButton.TextSize = 13
 ToggleButton.Parent = MainFrame
 
 local ButtonCorner = Instance.new("UICorner")
@@ -210,15 +242,14 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Кнопка FLY (Справа в верхнем ряду, рядом с ESP)
 local FlyButton = Instance.new("TextButton")
 FlyButton.Size = UDim2.new(0, 85, 0, 40)
 FlyButton.Position = UDim2.new(0, 115, 0, 50)
 FlyButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-FlyButton.Text = "FLY: OFF"
+FlyButton.Text = "INF JUMP: OFF"
 FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 FlyButton.Font = Enum.Font.GothamBold
-FlyButton.TextSize = 14
+FlyButton.TextSize = 11
 FlyButton.Parent = MainFrame
 
 local FlyCorner = Instance.new("UICorner")
@@ -228,23 +259,24 @@ FlyCorner.Parent = FlyButton
 FlyButton.MouseButton1Click:Connect(function()
     Fly_Enabled = not Fly_Enabled
     if Fly_Enabled then
-        FlyButton.Text = "FLY: ON"
+        FlyButton.Text = "INF JUMP: ON"
         FlyButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     else
-        FlyButton.Text = "FLY: OFF"
+        FlyButton.Text = "INF JUMP: OFF"
         FlyButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     end
 end)
 
--- Кнопка AIMBOT (Ниже под ESP и FLY)
+--- --- РЯД 2: AIMBOT И CROSSHAIR (ТЕПЕРЬ НА ОДНОЙ СТРОКЕ) --- ---
+
 local AimButton = Instance.new("TextButton")
-AimButton.Size = UDim2.new(0, 180, 0, 40)
-AimButton.Position = UDim2.new(0.5, -90, 0, 105)
+AimButton.Size = UDim2.new(0, 85, 0, 40)
+AimButton.Position = UDim2.new(0, 20, 0, 100) -- Та же высота, что и у Crosshair
 AimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-AimButton.Text = "AIMBOT: OFF"
+AimButton.Text = "AIM: OFF"
 AimButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimButton.Font = Enum.Font.GothamBold
-AimButton.TextSize = 16
+AimButton.TextSize = 13
 AimButton.Parent = MainFrame
 
 local AimCorner = Instance.new("UICorner")
@@ -254,18 +286,44 @@ AimCorner.Parent = AimButton
 AimButton.MouseButton1Click:Connect(function()
     Aimbot_Enabled = not Aimbot_Enabled
     if Aimbot_Enabled then
-        AimButton.Text = "AIMBOT: ON"
+        AimButton.Text = "AIM: ON"
         AimButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     else
-        AimButton.Text = "AIMBOT: OFF"
+        AimButton.Text = "AIM: OFF"
         AimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     end
 end)
 
---- ПОЛЗУНОК FOV (В самом низу) ---
+local CrosshairButton = Instance.new("TextButton")
+CrosshairButton.Size = UDim2.new(0, 85, 0, 40)
+CrosshairButton.Position = UDim2.new(0, 115, 0, 100) -- Рядом с AimButton
+CrosshairButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CrosshairButton.Text = "CROSS: OFF"
+CrosshairButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CrosshairButton.Font = Enum.Font.GothamBold
+CrosshairButton.TextSize = 12
+CrosshairButton.Parent = MainFrame
+
+local CrosshairCorner = Instance.new("UICorner")
+CrosshairCorner.CornerRadius = UDim.new(0, 8)
+CrosshairCorner.Parent = CrosshairButton
+
+CrosshairButton.MouseButton1Click:Connect(function()
+    Crosshair_Enabled = not Crosshair_Enabled
+    if Crosshair_Enabled then
+        CrosshairButton.Text = "CROSS: ON"
+        CrosshairButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        CrosshairButton.Text = "CROSS: OFF"
+        CrosshairButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
+
+--- --- ПОЛЗУНОК FOV --- ---
+
 local SliderLabel = Instance.new("TextLabel")
 SliderLabel.Size = UDim2.new(0, 180, 0, 20)
-SliderLabel.Position = UDim2.new(0.5, -90, 0, 160)
+SliderLabel.Position = UDim2.new(0.5, -90, 0, 155)
 SliderLabel.BackgroundTransparency = 1
 SliderLabel.Text = "FOV Радиус: " .. tostring(Aimbot_FOV)
 SliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -274,8 +332,8 @@ SliderLabel.TextSize = 12
 SliderLabel.Parent = MainFrame
 
 local SliderFrame = Instance.new("Frame")
-SliderFrame.Size = UDim2.new(0, 180, 0, 10)
-SliderFrame.Position = UDim2.new(0.5, -90, 0, 190)
+SliderFrame.Size = UDim2.new(0, 180, 0, 8)
+SliderFrame.Position = UDim2.new(0.5, -90, 0, 180)
 SliderFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 SliderFrame.BorderSizePixel = 0
 SliderFrame.Parent = MainFrame
@@ -295,8 +353,8 @@ FillCorner.CornerRadius = UDim.new(0, 4)
 FillCorner.Parent = SliderFill
 
 local SliderButton = Instance.new("TextButton")
-SliderButton.Size = UDim2.new(0, 16, 0, 16)
-SliderButton.Position = UDim2.new(Aimbot_FOV / 500, -8, 0.5, -8)
+SliderButton.Size = UDim2.new(0, 14, 0, 14)
+SliderButton.Position = UDim2.new(Aimbot_FOV / 500, -7, 0.5, -7)
 SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 SliderButton.Text = ""
 SliderButton.Parent = SliderFrame
@@ -305,36 +363,104 @@ local RoundCorner = Instance.new("UICorner")
 RoundCorner.CornerRadius = UDim.new(1, 0)
 RoundCorner.Parent = SliderButton
 
-local dragging = false
+--- --- ПОЛЗУНОК ДЛЯ КРОССХЕИРА --- ---
 
-local function updateSlider(input)
+local CrosshairSliderLabel = Instance.new("TextLabel")
+CrosshairSliderLabel.Size = UDim2.new(0, 180, 0, 20)
+CrosshairSliderLabel.Position = UDim2.new(0.5, -90, 0, 205)
+CrosshairSliderLabel.BackgroundTransparency = 1
+CrosshairSliderLabel.Text = "Размер прицела: " .. tostring(Crosshair_Size)
+CrosshairSliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+CrosshairSliderLabel.Font = Enum.Font.GothamBold
+CrosshairSliderLabel.TextSize = 12
+CrosshairSliderLabel.Parent = MainFrame
+
+local CrosshairSliderFrame = Instance.new("Frame")
+CrosshairSliderFrame.Size = UDim2.new(0, 180, 0, 8)
+CrosshairSliderFrame.Position = UDim2.new(0.5, -90, 0, 230)
+CrosshairSliderFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+CrosshairSliderFrame.BorderSizePixel = 0
+CrosshairSliderFrame.Parent = MainFrame
+
+local CSliderCorner = Instance.new("UICorner")
+CSliderCorner.CornerRadius = UDim.new(0, 4)
+CSliderCorner.Parent = CrosshairSliderFrame
+
+local CrosshairSliderFill = Instance.new("Frame")
+CrosshairSliderFill.Size = UDim2.new((Crosshair_Size - 3) / 47, 0, 1, 0)
+CrosshairSliderFill.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+CrosshairSliderFill.BorderSizePixel = 0
+CrosshairSliderFill.Parent = CrosshairSliderFrame
+
+local CFillCorner = Instance.new("UICorner")
+CFillCorner.CornerRadius = UDim.new(0, 4)
+CFillCorner.Parent = CrosshairSliderFill
+
+local CrosshairSliderButton = Instance.new("TextButton")
+CrosshairSliderButton.Size = UDim2.new(0, 14, 0, 14)
+CrosshairSliderButton.Position = UDim2.new((Crosshair_Size - 3) / 47, -7, 0.5, -7)
+CrosshairSliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+CrosshairSliderButton.Text = ""
+CrosshairSliderButton.Parent = CrosshairSliderFrame
+
+local CRoundCorner = Instance.new("UICorner")
+CRoundCorner.CornerRadius = UDim.new(1, 0)
+CRoundCorner.Parent = CrosshairSliderButton
+
+-- Логика перетаскивания ползунков
+local draggingFOV = false
+local draggingCrosshair = false
+
+local function updateFOVSlider(input)
     local minX = SliderFrame.AbsolutePosition.X
     local maxX = minX + SliderFrame.AbsoluteSize.X
     local inputX = math.clamp(input.Position.X, minX, maxX)
     local percentage = (inputX - minX) / SliderFrame.AbsoluteSize.X
     
     Aimbot_FOV = math.floor(10 + (percentage * 490))
-    
     SliderLabel.Text = "FOV Радиус: " .. tostring(Aimbot_FOV)
-    SliderButton.Position = UDim2.new(percentage, -8, 0.5, -8)
+    SliderButton.Position = UDim2.new(percentage, -7, 0.5, -7)
     SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+end
+
+local function updateCrosshairSlider(input)
+    local minX = CrosshairSliderFrame.AbsolutePosition.X
+    local maxX = minX + CrosshairSliderFrame.AbsoluteSize.X
+    local inputX = math.clamp(input.Position.X, minX, maxX)
+    local percentage = (inputX - minX) / CrosshairSliderFrame.AbsoluteSize.X
+    
+    Crosshair_Size = math.floor(3 + (percentage * 47))
+    CrosshairSliderLabel.Text = "Размер прицела: " .. tostring(Crosshair_Size)
+    CrosshairSliderButton.Position = UDim2.new(percentage, -7, 0.5, -7)
+    CrosshairSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
 end
 
 SliderButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
+        draggingFOV = true
+    end
+end)
+
+CrosshairSliderButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingCrosshair = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
+        draggingFOV = false
+        draggingCrosshair = false
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        updateSlider(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if draggingFOV then
+            updateFOVSlider(input)
+        elseif draggingCrosshair then
+            updateCrosshairSlider(input)
+        end
     end
 end)
 
@@ -373,7 +499,7 @@ CloseButton.MouseButton1Click:Connect(function()
     OpenButton.Visible = true
 end)
 
--- Умная кнопка открытия (защита от ложного клика при движении)
+-- Умная кнопка открытия
 local dragStartPos = nil
 OpenButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
